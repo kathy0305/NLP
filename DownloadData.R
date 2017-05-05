@@ -26,13 +26,13 @@ list.files("final/en_US")
 
 
 ## it was recommended in course to use the readLines function
-## Read the data
+## Read the data in the 3 text files found in en_US folder
 ## use UTF-8 
 ## Unicode. It assigns every character a unique number called a code point. 
 ## to read non-Latin characters
 blogs <- readLines("final/en_US/en_US.blogs.txt", encoding="UTF-8")
 twitter <- readLines("final/en_US/en_US.twitter.txt", encoding="UTF-8")
-news <- readLines("final/en_US/en_US.blogs.txt", encoding = "UTF-8")
+news <- readLines("final/en_US/en_US.news.txt", encoding = "UTF-8")
 
 
 

@@ -20,7 +20,7 @@ list.files("final")
 ## [1] "de_DE" "en_US" "fi_FI" "ru_RU"
 
 
-## only interested in the en_US
+## only interested in the en_US, lets see whats inside of it
 list.files("final/en_US")
 ##[1] "en_US.blogs.txt"   "en_US.news.txt"    "en_US.twitter.txt"
 
@@ -34,8 +34,15 @@ blogs <- readLines("final/en_US/en_US.blogs.txt", encoding="UTF-8")
 twitter <- readLines("final/en_US/en_US.twitter.txt", encoding="UTF-8")
 news <- readLines("final/en_US/en_US.news.txt", encoding = "UTF-8")
 
+##save the  data for further use, so we dont have to keep loading it
+saveRDS(blogs, "blogs.RDS")
+saveRDS(twitter, "twitter.RDS")
+saveRDS(news,"news.RDS")
 
 
 
-
-
+## I'll revisit this later:
+## Whether to saveRDS or to write_rds
+##If you've used saveRDS() in the past, you will have no trouble
+##using write_rds(). The only major difference between the two is
+##that write_rds() does not compress the file by default.

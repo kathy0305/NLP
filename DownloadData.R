@@ -11,7 +11,7 @@ if(!file.exists(fileName)){
 
 ## else simply unzip it
 unzip(fileName)
-
+close(con)
 
 list.files()
 ## file called "final" (the unzipped folder)
@@ -40,6 +40,8 @@ saveRDS(twitter, "twitter.RDS")
 saveRDS(news,"news.RDS")
 
 
+##close connection
+close(con)
 
 ## I'll revisit this later:
 ## Whether to saveRDS or to write_rds

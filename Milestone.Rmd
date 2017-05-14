@@ -1,0 +1,262 @@
+---
+title: "Week2 Milestone"
+author: "Kathy0305"
+date: "May 12, 2017"
+output:
+  html_document: default
+  
+---
+
+```{r setup, include=FALSE, R.options=knitr::opts_chunk$set(warning=FALSE, message=FALSE)}
+knitr::opts_chunk$set(echo = TRUE)
+```
+This document will explain only the major features of the data used for SwiftKet Capstone Project.
+Its a milestone report to show that:
+1. you've downloaded the data and have successfully loaded it in.
+2. Create a basic report of summary statistics about the data sets.
+3. Report any interesting findings that you amassed so far.
+4. Get feedback on your plans for creating a prediction algorithm and Shiny app.
+
+###Review criterialess 
+1.Does the link lead to an HTML page describing the exploratory analysis of the training data set?
+2.Has the data scientist done basic summaries of the three files? Word counts, line counts and basic data tables?
+3.Has the data scientist made basic plots, such as histograms to illustrate features of the data?
+4.Was the report written in a brief, concise style, in a way that a non-data scientist manager could appreciate?
+
+
+### 1. DownLoad and read file succesfully
+```{r download data, echo=TRUE, eval=FALSE}
+## Download the file
+
+fileURL <- 'https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip'
+fileName <- '../NLP/Coursera-SwiftKey.zip'
+
+## If the file is not in the directory, download it and unzip it
+if(!file.exists(fileName)){
+    download.file(fileURL, destfile = fileName)
+    unzip(fileName, exdir = '../NLP', overwrite = T)
+}
+
+## else simply unzip it
+unzip(fileName)
+close(con)
+
+list.files()
+## file called "final" (the unzipped folder)
+list.files("final")
+##that included 4 different files
+## [1] "de_DE" "en_US" "fi_FI" "ru_RU"
+## only interested in the en_US, lets see whats inside of it
+list.files("final/en_US")
+##[1] "en_US.blogs.txt"   "en_US.news.txt"    "en_US.twitter.txt"
+```
+####Only interested in the English language file
+#### There were 3 files: 
+</br>
+####`r list.files("final/en_US")` 
+
+#####Download files, read them and save them
+```{r Read Files , cache=TRUE}
+blogs <- readLines("final/en_US/en_US.blogs.txt", encoding="UTF-8")
+twitter <- readLines("final/en_US/en_US.twitter.txt", encoding="UTF-8")
+news <- readLines("final/en_US/en_US.news.txt", encoding = "UTF-8")
+
+##save the  data for further use, so we dont have to keep loading it
+saveRDS(blogs, "blogs.RDS")
+saveRDS(twitter, "twitter.RDS")
+saveRDS(news,"news.RDS")
+
+```
+###2. Create a basic report of summary statistics about the data sets.
+#### Basic Summaries of the raw data before cleaning and tokenazing
+```{r Basic Summaries,results='asis', echo=FALSE}
+## Basic Exploratory Analysis
+## Load required packages
+library(tidyverse)
+library(stringi)
+library(stringr)
+library(knitr)
+library(xtable)
+library(tm)
+library(wordcloud)
+library(tidytext)
+library(RWeka)
+library(gridExtra)
+##Basic Summaries about the raw data before cleaning
+## Create a data frame to house data summaries
+SummaryTwit <- stri_stats_latex(twitter)## stringi pkg gives general info
+SummaryBlogs <-stri_stats_latex(blogs)
+SummaryNews <-stri_stats_latex(news)
+DataSummary <- tibble (FileName = c("Twitter","Blogs","News"))
+DataSummary <- DataSummary %>%
+    mutate(Length=c( length(twitter),length(blogs),length(news)))%>%
+    mutate(LongestLine=c(max(str_length(twitter)),max(str_length(blogs)),     max(str_length(news)))) %>%
+    mutate(ShortestLine=c(min(str_length(twitter)),min(str_length(blogs)),min(str_length(news)))) %>%
+    mutate(WordsCount= c(SummaryTwit["Words"],SummaryBlogs["Words"],SummaryNews["Words"]))%>%
+   mutate(CharCount= c(SummaryTwit["CharsWord"],SummaryBlogs["CharsWord"],SummaryNews["CharsWord"]))%>%
+    mutate(WhiteSpaces= c(SummaryTwit["CharsWhite"],SummaryBlogs["CharsWhite"],SummaryNews["CharsWhite"]))
+
+kable(DataSummary)
+
+```
+
+
+###Basic summary after data is tidy and tokinzied
+#### Sampled 50000 from each file and removed emojis,punctuation, numbers, white spaces and converted to all lower case.
+
+```{r Summary tidy data, echo=FALSE, warning=FALSE, message=FALSE, comment=FALSE}
+##sample data
+set.seed(582017)
+sampleTwitter <-sample (twitter, 50000,replace = FALSE)
+sampleBlogs <- sample (blogs,50000, replace = FALSE)
+sampleNews <- sample(news,50000, replace = FALSE)
+## remove emojis
+sampleTwitter <- iconv(sampleTwitter, 'UTF-8', 'ASCII')
+sampleBlogs <- iconv(sampleBlogs, 'UTF-8', 'ASCII')
+sampleNews <- iconv(sampleNews, 'UTF-8', 'ASCII')
+## converting to corpus
+##The Corpus function is very flexible. It can read PDFs, Word docs, e.g.
+## Here VectorSource told the Corpus function that each document was an entry in the vector.
+Twit_corpus <- Corpus(VectorSource(sampleTwitter))
+Blog_corpus <- Corpus(VectorSource(sampleBlogs))
+News_corpus <- Corpus(VectorSource(sampleNews))
+##clean data
+CleanDataFunction <- function(x){ x%>%
+        tm_map(removeNumbers) %>%
+        tm_map(removePunctuation) %>%
+        tm_map(stripWhitespace) %>%
+        tm_map(tolower)}
+CleanDataFunction(Twit_corpus)
+CleanDataFunction(Blog_corpus)
+CleanDataFunction(News_corpus)
+
+Twit_Tidy<-DocumentTermMatrix(Twit_corpus)
+Blog_Tidy<-DocumentTermMatrix(Blog_corpus)
+News_Tidy<-DocumentTermMatrix(News_corpus)
+Twit_TidyB <- tidy(Twit_Tidy)
+Blog_TidyB <- tidy(Blog_Tidy)
+News_TidyB <- tidy(News_Tidy)
+Twit_TidyC <- Twit_TidyB %>%
+    anti_join(stop_words, by = c(term = "word"))
+Blog_TidyC <- Blog_TidyB %>%
+    anti_join(stop_words, by = c(term = "word"))
+News_TidyC <-News_TidyB %>%
+    anti_join(stop_words, by = c(term = "word"))
+
+Plot<- function (x){x %>%
+    count(term, wt = count) %>%
+    mutate(term = reorder(term, n)) %>%
+    top_n(20) %>%  ## look at the top 20 words
+    ggplot(aes(term, n)) +
+    geom_bar(stat = "identity", fill = "blue", alpha = 0.4, show.legend = FALSE) +
+    geom_text(aes(label = n), hjust = -0.1, color = "darkgreen", size = 2.5) +
+    theme_classic() +
+    xlab(NULL) + ylab("Frequency") +
+    coord_flip()}
+Plot2<- function (x){x %>%
+    count(term, wt = count) %>%
+    mutate(term = reorder(term, n)) %>%
+    top_n(20) %>%  ## look at the top 20 words
+    ggplot(aes(term, n)) +
+    geom_bar(stat = "identity", fill = "green", alpha = 0.4, show.legend = FALSE) +
+    geom_text(aes(label = n), hjust = -0.1, color = "darkgreen", size = 2.5) +
+    theme_classic() +
+    xlab(NULL) + ylab("Frequency") +
+    coord_flip()}
+
+
+
+
+
+```
+```{r Clean Summary, echo=FALSE, warning=FALSE, message=FALSE}
+DataSummaryClean <- tibble (FileName = c("Twitter","Blogs","News"))
+DataSummaryClean <- DataSummaryClean %>%
+    mutate(WordCount=c(  nrow(Twit_TidyB),nrow(Blog_TidyB),nrow(News_TidyB)))%>%
+    mutate(WordCountNoStopsWords= c(nrow(Twit_TidyC),nrow(Blog_TidyC),nrow(News_TidyC)))
+    
+
+kable(DataSummaryClean)
+```
+###Lets look at the top words frequency
+```{r plotraw, fig.width=12, fig.height=5, echo=FALSE}
+
+grid.arrange(top="Most Words",arrangeGrob(Plot2(Twit_TidyB) + ggtitle("Twitter")),arrangeGrob(Plot2(Blog_TidyB) + ggtitle("Blogs")), arrangeGrob(Plot2(News_TidyB) + ggtitle("News")), ncol=3)
+```
+
+###As we can see there are lots of useless words, like 'the','you', 'and'
+###these are called StopWords, out of curiosity will remove them and see ###what are the other frequent words after we remove stopwords
+
+```{r plot after , fig.width=12, fig.height=5, echo=FALSE}
+## lots of useless words like:
+## the, you, and , for, that....
+## these are called stop words and we need to delete them
+grid.arrange(top="Most Words After Removing StopWords",arrangeGrob(Plot(Twit_TidyC) + ggtitle("Twitter")),arrangeGrob(Plot(Blog_TidyC) + ggtitle("Blogs")), arrangeGrob(Plot(News_TidyC) + ggtitle("News")), ncol=3)
+```
+
+### Handling Profanities:
+####I found a lot of list of words that are considered profanities, 
+####but before I delete those words, I wanted to see if the files had any
+#### and I wanted to be the judge of what is profanity
+</br>
+####I decided to use the sentiment approach and use AFFIN lexicon
+#### for scoring words based on their negative or positive score
+```{r sentiment, warning=FALSE, message=FALSE}
+## Lets look at sentiment analysis to look for negative words (profanities)
+
+AFINN <- sentiments %>%  ## comes with the tidytext pkg
+    filter(lexicon == "AFINN") %>%  ## use the AFINN lexicon
+    select(word, afinn_score = score)
+
+
+## Join the AFFIN word with our list of words 
+reviews_sentiment <- CombinedData%>%
+    inner_join(AFINN, by = c(term = "word")) %>%
+    group_by(document,count) %>%
+    summarize(sentiment = mean(afinn_score)) ## get a summary
+
+##create a per-word summary, and see which words tend to appear in 
+##positive or negative reviews. 
+review_words_counted <- Twit_TidyB %>%
+    count(document, term, count) %>%
+    ungroup()
+
+
+word_summaries <- review_words_counted %>%
+    group_by(term) %>%
+    summarize(document=n_distinct(document),
+              reviews = n(),
+              uses = sum(n)) %>%
+    ungroup()
+
+## This is not needed, but I thought I continue to follow along the online examle
+## filter the top 5
+word_summaries_filtered <- word_summaries %>%
+    filter(reviews >= 5, document >= 1)
+
+
+##combine and compare the two datasets with inner_join
+words_afinn <- word_summaries_filtered %>%
+    inner_join(AFINN,by = c(term = "word"))
+```
+
+
+```{r plot sentiment}
+ggplot(words_afinn, aes(afinn_score, reviews)) + 
+    geom_smooth(method="lm", se=FALSE, show.legend=FALSE,color="blue") +
+    geom_text(aes(label = term, size = NULL), check_overlap = TRUE, vjust=1, hjust=1) +
+    geom_point() +
+    scale_x_continuous(limits = c(-6,6)) +
+    xlab("AFINN sentiment score") +
+    ylab("Number of times used")
+
+```
+####From the plot above, I decided to remove all words with score -4 and below
+```{r no profanity, echo=FALSE, warning=FALSE, message=FALSE}
+words_afinnClean <- words_afinn %>%
+  filter(afinn_score >= -3) %>%
+    select(term,uses,afinn_score)
+```
+
+  
+NEED TO ADD NGRAMS

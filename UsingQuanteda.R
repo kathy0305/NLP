@@ -112,6 +112,11 @@ system.time(dfm(CombinesCorpus))
 ## lets remove numbers and punctations
 TokenCombinedDFM <- dfm(CombinesCorpus,remove_numbers = TRUE, remove_punct = TRUE)
 rm(CorpusBlogs,CorpusNews,CorpusTwit)
+
+## 1gram
+OneGram <- dfm(CombinesCorpus,  remove_punct = TRUE, remove_numbers = TRUE, remove_twitter = TRUE)
+topfeatures(OneGram, 20)
+
 ##2gram
 TwoGram <- dfm(CombinesCorpus, ngrams = 2, what = "fastestword",
      remove_punct = TRUE, remove_numbers = TRUE, remove_twitter = TRUE)
@@ -133,6 +138,7 @@ FourGram <- dfm (CombinesCorpus,ngrams = 4,what = "fastestword",
 topfeatures(FourGram, 20)
 
 ## save files
+save(OneGram, file='OneGram.RData')
 save(TwoGram, file='TwoGrams.RData')
 save(ThreeGram, file='ThreeGrams.RData')
 save(FourGram, file='FourGrams.RData')
